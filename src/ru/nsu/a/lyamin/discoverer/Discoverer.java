@@ -14,8 +14,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
-//import ru.nsu.a.lyamin.view.SessionInfo;
-
 public class Discoverer implements Runnable
 {
     private byte[] buffer = new byte[8192];
@@ -109,7 +107,6 @@ public class Discoverer implements Runnable
 
         for(Map.Entry<Integer, SnakesProto.GamePlayer> entry : snakeGame.getPlayers().entrySet())
         {
-            //System.out.println("PLAYER IN GET MESSAGE");
             gamePlayersBuilder.addPlayers(entry.getValue());
         }
 
@@ -180,9 +177,7 @@ public class Discoverer implements Runnable
                 @Override
                 public void run()
                 {
-                    //System.out.println("Has to send:" + hasToSend);
                     if(!hasToSend) return;
-                    //System.out.println("Message:"  + getMessage());
                     SnakesProto.GameMessage message = getMessage();
                     byte [] messageByte = message.toByteArray();
                     try

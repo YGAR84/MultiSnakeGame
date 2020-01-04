@@ -95,8 +95,6 @@ public class MessageManager
 
         snakeGame = _snakeGame;
 
-        //System.out.println("MESS MANAGER CTOR WITH: " + (_snakeGame == null));
-
         gameWindow = snakeGame.getGameWindow();
 
         Init(gameConfig);
@@ -144,7 +142,6 @@ public class MessageManager
                 catch (IOException e)
                 {
                     System.out.println("Receiver interrupt error: " + e.getMessage());
-//                    e.printStackTrace();
                 }
             }
         });
@@ -158,8 +155,6 @@ public class MessageManager
             @Override
             public void run()
             {
-                System.out.println("MASTER: " + (master == null ? "null" : master.getIp() + ":" + master.getPort() + "; id: " + masterId ));
-                System.out.println("DEPUTY: " + (deputy == null ? "null" : deputy.getIp() + ":" + deputy.getPort() + "; id: " + deputyId ));
                 if(nodeRole == SnakesProto.NodeRole.MASTER)
                 {
                     for(var entry : playersIds.entrySet())
@@ -177,7 +172,7 @@ public class MessageManager
                 }
                 else
                 {
-                    if(master == null) { System.out.println("WTF?"); return; }
+                    if(master == null) { return; }
                     if(!messages.containsKey(master))
                         messages.put(master, new ConcurrentHashMap<>());
                     if(messages.get(master).size() == 0)
@@ -187,16 +182,10 @@ public class MessageManager
                     }
                 }
 
-                System.out.println("MY ROLE:" + nodeRole);
-
-                System.out.println("_________________MESSAGES TO SEND_________________" + messages.size());
-                //System.out.println("Total messages to send: " + messages.size());
                 for(Map.Entry<HostInfo, ConcurrentHashMap<Long, SnakesProto.GameMessage>> firstEntry : messages.entrySet())
                 {
-                    System.out.println("MESSAGES FOR: " + firstEntry.getKey().getIp() + " ; " + firstEntry.getKey().getPort() + ": num = " + firstEntry.getValue().size());
                     for(Map.Entry<Long, SnakesProto.GameMessage> secondEntry : firstEntry.getValue().entrySet())
                     {
-                        System.out.println("\t" + messageToString(secondEntry.getValue()) + "\n");
                         byte[] mess = secondEntry.getValue().toByteArray();
                         try
                         {
@@ -210,9 +199,6 @@ public class MessageManager
 
                     }
                 }
-                System.out.println("_________________MESSAGES TO SEND_________________");
-
-                //System.out.println("Message to send ");
 
             }
         }, 0, pingDelay);
@@ -226,28 +212,10 @@ public class MessageManager
             public void run()
             {
 
-                System.out.println("____________________________GAME PLAYERS___________________________");
-
-                for(Map.Entry<Integer, SnakesProto.GamePlayer> gp : snakeGame.getPlayers().entrySet())
-                {
-                    System.out.println("id: " + gp.getKey() + "; name:" + gp.getValue().getName() + "; role: " + gp.getValue().getRole() + "; port: " + gp.getValue().getPort());
-                }
-                System.out.println("____________________________GAME PLAYERS___________________________");
-                System.out.println("____________________________HOSTS__________________________________");
-                System.out.println("ME: port: " + getMyPort() + "; " + nodeRole);
-
-                for(Map.Entry<HostInfo, SnakesProto.NodeRole> entry : allPlayers.entrySet())
-                {
-                    System.out.println("port: " + entry.getKey().getPort() + "; role: " + entry.getValue());
-                }
-                System.out.println("____________________________HOSTS__________________________________");
-
-
                 boolean hasDeputy = false;
                 long timeNow = System.currentTimeMillis();
                 for(Map.Entry<HostInfo, Long> entry: nodesTimeout.entrySet())
                 {
-                    System.out.println("TIMEOUT: " + entry.getKey().getIp().getHostAddress() + ":" + entry.getKey().getPort() + ":" + allPlayers.get(entry.getKey()) + " : " + (timeNow - entry.getValue()));
                     if(allPlayers.get(entry.getKey()) == SnakesProto.NodeRole.DEPUTY)
                     {
                         hasDeputy = true;
@@ -266,9 +234,6 @@ public class MessageManager
                 {
 
                     SnakesProto.NodeRole killedNodeRole = allPlayers.get(hi);
-
-                    System.out.println("Host timeouted: " + hi.getIp() + " : " + hi.getPort() + "; Role: " + killedNodeRole);
-
 
                     if(nodeRole == SnakesProto.NodeRole.MASTER)
                     {
@@ -292,7 +257,6 @@ public class MessageManager
                     if(killedNodeRole != SnakesProto.NodeRole.MASTER)
                     {
                         messages.remove(hi);
-                        //System.out.println("REMOVE ALL MESSAGES FROM THIS CLIENT(" + messages.get(hi).size() +  "): " + hi.getPort());
                     }
                     else
                     {
@@ -307,19 +271,14 @@ public class MessageManager
 
                 HostInfo prevMaster = master;
 
-                System.out.println("Master dead: " + masterDeadFlag + "; deputy dead: " + deputyDeadFlag);
-
-
                 if(masterDeadFlag)
                 {
-                    System.out.println("My node role: " + nodeRole);
                     if(nodeRole == SnakesProto.NodeRole.VIEWER && !hasDeputy)
                     {
                         gameWindow.terminate();
                     }
                     else if(nodeRole == SnakesProto.NodeRole.DEPUTY)
                     {
-                        System.out.println("Before became Master");
                         becameMaster();
                     }
                     else if(!deputyDeadFlag)
@@ -367,20 +326,13 @@ public class MessageManager
     {
         try
         {
-//            byte messBytes[] = new byte[dp.getLength()];
-//
-//            System.arraycopy(dp.getData(), 0, messBytes, 0, dp.getLength());
-
             SnakesProto.GameMessage mess =
                     SnakesProto.GameMessage.parseFrom(ByteBuffer.wrap(dp.getData(), 0, dp.getLength()));
-
-            System.out.println("RECEIVED FROM: " + dp.getPort() + "; " + messageToString(mess));
 
             HostInfo sender = new HostInfo(dp.getAddress(), dp.getPort());
 
             if(mess.hasPing())
             {
-                //System.out.println("RECEIVED PING");
                 if(!lastIds.containsKey(sender) || !lastIds.get(sender).contains(mess.getMsgSeq()))
                 {
                     if (!lastIds.containsKey(sender))
@@ -396,7 +348,6 @@ public class MessageManager
             }
             else if(mess.hasSteer())
             {
-                //System.out.println("RECEIVED STEER");
                 if(!lastIds.containsKey(sender) || !lastIds.get(sender).contains(mess.getMsgSeq()))
                 {
                     if (!lastIds.containsKey(sender))
@@ -414,11 +365,6 @@ public class MessageManager
             }
             else if(mess.hasAck())
             {
-                //System.out.println("RECEIVED ACK");
-                //System.out.println(mess.getMsgSeq());
-
-                //if(lastIds.contains(mess.getMsgSeq())) return;
-
                 if(!messages.containsKey(sender)) return;
 
                 if(!messages.get(sender).containsKey(mess.getMsgSeq())) return;
@@ -429,13 +375,10 @@ public class MessageManager
 
                 if(messThatAcked.hasJoin())
                 {
-                    System.out.println("Join Acked");
                     master = sender;
                     allPlayers.put(sender, SnakesProto.NodeRole.MASTER);
                     playersIds.put(mess.getSenderId(), master);
                     snakeGame.getGameWindow().setPi(mess.getReceiverId());
-
-//                    messages.get(sender).remove(mess.getMsgSeq());
 
                     SnakesProto.GameMessage newPingMsg = createPing();
 
@@ -447,11 +390,7 @@ public class MessageManager
                 }
                 else if(messThatAcked.hasRoleChange())
                 {
-                    System.out.println(mess);
-                    System.out.println(messThatAcked);
                     SnakesProto.GameMessage.RoleChangeMsg rlChgMsg = messThatAcked.getRoleChange();
-
-                    System.out.println("Becoming viewer flag: " + becomingViewer);
 
                     if(becomingViewer && messThatAcked.getSenderId() == myId
                             && rlChgMsg.hasSenderRole()
@@ -461,21 +400,11 @@ public class MessageManager
 
                         becomingViewer = false;
 
-                        System.out.println("Want to exit in ack: " + wantToExit);
-
                         if(wantToExit)
                         {
                             gameWindow.terminate();
                         }
-//                        else
-//                        {
-//                            allPlayers.clear();
-//                            allPlayers.put(sender, SnakesProto.NodeRole.MASTER);
-//                        }
                     }
-                    //SnakesProto.GameMessage newPing = createPing();
-//                    sendAndStoreMessage(sender, newPing);
-                    //messages.get(sender).put(newPing.getMsgSeq(), newPing);
                 }
 
                 messages.get(sender).remove(mess.getMsgSeq());
@@ -483,8 +412,6 @@ public class MessageManager
             }
             else if(mess.hasState())
             {
-                //SnakesProto.GameState gameState1 = mess.getState().getState();
-                //System.out.println("RECEIVED STATE: " + gameState1.getStateOrder() + "\n" + gameState1);
                 if(nodeRole == SnakesProto.NodeRole.MASTER)
                 {
                     sendAck(mess, sender);
@@ -500,7 +427,7 @@ public class MessageManager
                     lastIds.get(sender).put(mess.getMsgSeq(), System.currentTimeMillis());
 
                     SnakesProto.GameState gameState = mess.getState().getState();
-                    System.out.println(gameState);
+
                     if (gameState.getStateOrder() < snakeGame.getGameStateCounter())
                     {
                         sendAck(mess, sender);
@@ -509,9 +436,6 @@ public class MessageManager
                     snakeGame.loadState(gameState, sender);
                     snakeGame.getGameWindow().repaint();
 
-
-//                  List<SnakesProto.GamePlayer> players = gameState.getPlayers().getPlayersList();
-//                  for(Map.Entry<Integer, HostInfo>)
 
                     Map<Integer, Boolean> hasPlayer = new HashMap<>();
 
@@ -547,7 +471,6 @@ public class MessageManager
                             hi = playersIds.get(player.getId());
                         }
 
-                        System.out.println("-----PLAYER_ID: " + player.getId() + " " + player.getIpAddress() + ":" + player.getPort() + " " + player.getName() + " " + player.getRole());
                         playersIds.put(player.getId(), hi);
                         allPlayers.put(hi, player.getRole());
                         if(player.getRole() == SnakesProto.NodeRole.DEPUTY)
@@ -661,8 +584,6 @@ public class MessageManager
 
                         sendAck(mess, sender);
 
-//                        sendMessage(sender, ack);
-
                         if(deputy == null)
                         {
                             deputy = sender;
@@ -694,7 +615,6 @@ public class MessageManager
             }
             else if(mess.hasError())
             {
-                //System.out.println("RECEIVED ERROR");
                 if(!lastIds.containsKey(sender) || !lastIds.get(sender).contains(mess.getMsgSeq()))
                 {
                     if (!lastIds.containsKey(sender))
@@ -713,23 +633,17 @@ public class MessageManager
             }
             else if(mess.hasRoleChange())
             {
-                System.out.println("RECEIVED ROLE CHANGE");
-                System.out.println(mess);
                 if(!lastIds.containsKey(sender) || !lastIds.get(sender).contains(mess.getMsgSeq()))
                 {
-
-                    //System.out.println("I'm in askndaknld");
                     if(mess.hasReceiverId() && mess.hasSenderId())
                     {
 
-                        //System.out.println("Jimba1");
                         SnakesProto.GameMessage.RoleChangeMsg roleChangeMsg = mess.getRoleChange();
 
                         var players = snakeGame.getPlayers();
 
                         if(roleChangeMsg.hasReceiverRole() && players.containsKey(mess.getReceiverId()))
                         {
-                            //System.out.println("Jimba1/1");
                             HostInfo messReceiver = playersIds.get(mess.getReceiverId());
                             if(messReceiver != null)
                             {
@@ -743,19 +657,14 @@ public class MessageManager
                                 players.put(mess.getReceiverId(), players.get(mess.getReceiverId()).toBuilder().setRole(roleChangeMsg.getReceiverRole()).build());
                                 changeDeputy();
                             }
-
-                            //System.out.println("My Id: " + myId + " ; ReceiverId: " + mess.getReceiverId());
                         }
                         else
                         {
-                            System.out.println("I'm here and i'm don't sen ack why?");
                             return;
                         }
 
-                        //System.out.println("Jimba2");
                         if(roleChangeMsg.hasSenderRole() && players.containsKey(mess.getSenderId()))
                         {
-                            //System.out.println("Jimba2/1");
                             HostInfo messSender = playersIds.get(mess.getSenderId());
                             if(messSender != null)
                             {
@@ -781,8 +690,6 @@ public class MessageManager
                             }
                         }
 
-
-                        //System.out.println("Jimba3");
                         if (!lastIds.containsKey(sender))
                         {
                             lastIds.put(sender, new ConcurrentHashMap<>());
@@ -790,10 +697,6 @@ public class MessageManager
 
                         lastIds.get(sender).put(mess.getMsgSeq(), System.currentTimeMillis());
 
-                    }
-                    else
-                    {
-                        System.out.println("Incorrect role change request");
                     }
 
                 }
@@ -835,27 +738,20 @@ public class MessageManager
                 .setSenderId(senderId)
                 .build();
 
-//        System.out.println("SEND STEER");
-
- //       System.out.println("STEER MSG: " + steerMessage);
-
         if(!messages.containsKey(master))
         {
             messages.put(master, new ConcurrentHashMap<>());
         }
 
-//        System.out.println(messages.get(master).get(steerMessage.getMsgSeq()));
 
         byte[] steerMsg = steerMessage.toByteArray();
         DatagramPacket steerDp = new DatagramPacket(steerMsg, 0, steerMsg.length,
                 master.getIp(), master.getPort());
 
- //       System.out.println("MY MASTER: " + master.getIp() + " " + master.getPort());
 
         try
         {
             socket.send(steerDp);
-//            System.out.println("SEND STEER");
         }
         catch (IOException e)
         {
@@ -863,9 +759,6 @@ public class MessageManager
         }
 
         messages.get(master).put(steerMessage.getMsgSeq(), steerMessage);
-
-        System.out.println("Steer in map \\_/ ");
-        System.out.println(messages.get(master).get(steerMessage.getMsgSeq()));
     }
 
     public void sendJoin(HostInfo hi, String name)
@@ -934,7 +827,6 @@ public class MessageManager
 
         if(masterDead)
         {
-            System.out.println("YA SDOH X(");
             becameViewer();
         }
         else
@@ -945,30 +837,11 @@ public class MessageManager
             }
         }
 
-
-
         SnakesProto.GameState gameState = snakeGame.generateNewState();
 
-        //System.out.println("GENERATED STATE:\n" + gameState.getSnakes(0));
 
         SnakesProto.GameMessage.StateMsg.Builder stateMsgBuilder = SnakesProto.GameMessage.StateMsg.newBuilder()
                 .setState(gameState);
-
-
-
-//
-//        for(Map.Entry<Integer, HostInfo> entry : playersIds.entrySet())
-//        {
-//            if(!snakes.containsKey(entry.getKey()) &&
-//                                                    allPlayers.get(entry.getValue()) != SnakesProto.NodeRole.VIEWER)
-//            {
-//                SnakesProto.GameMessage roleChgMsg = SnakesProto.GameMessage.newBuilder()
-//                                .build();
-//            }
-//        }
-
-
-
 
         for(Map.Entry<Integer, HostInfo> entry : playersIds.entrySet())
         {
@@ -979,23 +852,13 @@ public class MessageManager
                     .setMsgSeq(numSequenceGenerator.getNextNum())
                     .build();
 
-
-
             sendAndStoreMessage(entry.getValue(), stateMsg);
 
-//            messages.get(hi).put(stateMsg.getMsgSeq(), stateMsg);
         }
     }
 
     public HostInfo getHostInfo(int pi)
     {
-
-//        System.out.println("_______________PLAYERS_IDS________________");
-//        for(Map.Entry<Integer, HostInfo> entry: playersIds.entrySet())
-//        {
-//            System.out.println("ID: "+ entry.getKey() + "\nIP: " + entry.getValue().getIp() + "\nPORT: " + entry.getValue().getPort());
-//        }
-//        System.out.println("_______________PLAYERS_IDS________________");
         return playersIds.get(pi);
     }
 
@@ -1014,11 +877,9 @@ public class MessageManager
 
     private void sendAck(SnakesProto.GameMessage gameMessage, HostInfo hi)
     {
-        //System.out.println("Send Ack to:" + hi.getIp().getHostAddress() + ":" + hi.getPort());
         int receiverId = findPlayerIdByHostInfo(hi);
         if(receiverId == -1)
         {
-            System.out.println("Can't find playerId by host: " + hi.getIp().getHostAddress() + ":" + hi.getPort());
             return;
         }
         SnakesProto.GameMessage ack = createAck(gameMessage, receiverId);
@@ -1046,7 +907,6 @@ public class MessageManager
         {
             if(!socket.isClosed())
                 socket.send(ackDp);
-            System.out.println("SEND TO: " + receiver.getPort() + "; MESSAGE:" + messageToString(message));
         }
         catch (IOException e)
         {
@@ -1099,7 +959,6 @@ public class MessageManager
                 int receiverId = findPlayerIdByHostInfo(entry.getKey());
                 if(receiverId == -1)
                 {
-                    System.out.println("Cannot find receiver id");
                     continue;
                 }
 
@@ -1111,7 +970,6 @@ public class MessageManager
                 allPlayers.put(entry.getKey(), SnakesProto.NodeRole.DEPUTY);
                 sendAndStoreMessage(entry.getKey(), roleChangeMsg);
 
-//                messages.get(entry.getKey()).put(roleChangeMsg.getMsgSeq(), roleChangeMsg);
                 break;
             }
         }
@@ -1178,7 +1036,6 @@ public class MessageManager
 
         if(nodeRole == SnakesProto.NodeRole.MASTER)
         {
-            System.out.println("DEPUTY is null?: " + (deputy == null));
             if(deputy != null)
             {
                 roleChangeMsg.setReceiverId(deputyId);
@@ -1244,7 +1101,6 @@ public class MessageManager
     {
         for(var entry : playersIds.entrySet())
         {
-            System.out.println("Players: " + entry.getKey() + " ; " + entry.getValue());
             if(allPlayers.get(entry.getValue()) == SnakesProto.NodeRole.DEPUTY)
             {
                 master = entry.getValue();
@@ -1259,7 +1115,6 @@ public class MessageManager
 
     private void changeRole(SnakesProto.NodeRole _nodeRole)
     {
-        System.out.println("PrevRole: " + nodeRole + "; NewRole: " + _nodeRole);
         if(nodeRole != _nodeRole)
         {
             if(nodeRole == SnakesProto.NodeRole.VIEWER)
@@ -1276,7 +1131,6 @@ public class MessageManager
             }
 
             nodeRole = _nodeRole;
-            //System.out.println("Game window null&: " + (gameWindow == null));
             gameWindow.setNodeRole(nodeRole);
         }
     }

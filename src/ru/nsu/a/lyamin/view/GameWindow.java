@@ -89,7 +89,6 @@ public class GameWindow
         if((pi = messageManager.addMe(name, SnakesProto.NodeRole.MASTER,
                 SnakesProto.PlayerType.HUMAN)) == -1)
         {
-            System.out.println("Unable to create Snake");
             ErrorBox.display("Unable to create Snake");
         }
 
@@ -120,7 +119,6 @@ public class GameWindow
         becameViewer.setFocusTraversable(false);
         becameViewer.setOnAction(actionEvent ->
         {
-//            System.out.println("Became VIEWER");
             messageManager.becameViewer();
         });
 
@@ -128,7 +126,6 @@ public class GameWindow
         exitButton.setFocusTraversable(false);
         exitButton.setOnAction(actionEvent ->
         {
-  //          System.out.println("Safe EXIT PRESSED");
             messageManager.safeExit();
         });
 
@@ -203,7 +200,6 @@ public class GameWindow
                     {
                         if(nodeRole == SnakesProto.NodeRole.MASTER)
                         {
-                        //    System.out.println("I became master LOL: " + pi);
                             snakeGame.moveSnakes();
                             messageManager.sendState();
 
@@ -234,7 +230,6 @@ public class GameWindow
             {
                 terminate();
                 Platform.runLater(() -> GameOverWindow.display(scores));
-               // System.out.println("Game over, pls stop timer");
             }
         }
     }

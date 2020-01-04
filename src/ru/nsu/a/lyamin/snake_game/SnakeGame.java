@@ -49,10 +49,6 @@ public class SnakeGame
         gameWindow = _gameWindow;
         messageManager = new MessageManager(this, _gameConfig, _nodeRole);
 
-        System.out.println("SNAKE GAME CTOR: " + (_gameWindow == null));
-
-
-
         nodeRole = _nodeRole;
         height = gameConfig.getHeight();
         width = gameConfig.getWidth();
@@ -72,8 +68,6 @@ public class SnakeGame
         synchronized (this)
         {
 
-            System.out.println(snakeName);
-
             if(_nodeRole == SnakesProto.NodeRole.VIEWER)
             {
 
@@ -92,7 +86,6 @@ public class SnakeGame
 
                 players.put(playerIdCounter, newPlayer);
 
-                System.out.println("Player:" + players.get(playerIdCounter).hasName());
                 return playerIdCounter;
             }
 
@@ -187,11 +180,6 @@ public class SnakeGame
         }
         return false;
     }
-
-//    public boolean doStep()
-//    {
-//        return false;
-//    }
 
     public void changeSnakeDir(Integer pi, SnakesProto.Direction dir)
     {
@@ -444,49 +432,6 @@ public class SnakeGame
             }
         }
 
-//        for(int i = 0; i < width; ++i)
-//        {
-//            int counter = 0;
-//            for(int j = 0; j < height; ++j)
-//            {
-//                if(freePlace[i][j])
-//                {
-//                    if(counter < spawnArea)
-//                        counter++;
-//
-//                    if(counter == spawnArea)
-//                    {
-//                        boolean flag = false;
-//                        for (int k = j - counter + 1; k < height; ++k)
-//                        {
-//                            int counter2 = 0;
-//                            for(int l = i; l < width; ++l)
-//                            {
-//                                if(freePlace[l][k])
-//                                {
-//                                    ++counter2;
-//                                    if(counter2 == spawnArea)
-//                                    {
-//                                        flag = true;
-//                                    }
-//                                }
-//                                else
-//                                    break;
-//
-//                            }
-//                            if(flag) break;
-//                        }
-//                        if(flag) return new Point(i, j - counter + 1);
-//
-//                    }
-//                }
-//                else
-//                {
-//                    counter = 0;
-//                }
-//            }
-//        }
-
         return new Point(-1, -1);
     }
 
@@ -506,7 +451,6 @@ public class SnakeGame
     private ArrayList<Point> createNewSnakeBody()
     {
         Point p = findSpawnAreaRect();
-        System.out.println("X: " + p.getX() + "; Y: " + p.getY());
 
         if(p.getX() == -1)
         {

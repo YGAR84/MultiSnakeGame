@@ -100,15 +100,12 @@ public class GUIFx extends Application
             GameWindow gameWindow = new GameWindow(si.getGameConfig(),
                     discoverer, name, SnakesProto.NodeRole.NORMAL, hostInfo);
 
-
-            System.out.println(si.getIp() + " " + si.getPort());
         });
 
         Button refreshButton = new Button("Refresh");
         refreshButton.setOnAction(actionEvent ->
         {
 
-            System.out.println("Refreshed");
             tableView.getItems().removeAll();
             tableView.setItems(getSessionsInfo());
         });
@@ -175,7 +172,6 @@ public class GUIFx extends Application
         TableColumn<SessionInfo, Boolean> canJoinColumn = new TableColumn<>("Can join");
         canJoinColumn.setMaxWidth(170);
         canJoinColumn.setCellValueFactory(new PropertyValueFactory<>("canJoin"));
-        System.out.println(canJoinColumn.getWidth());
         canJoinColumn.setSortType(TableColumn.SortType.DESCENDING);
 
         tableView = new TableView<>();
