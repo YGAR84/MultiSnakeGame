@@ -1,7 +1,5 @@
 package ru.nsu.a.lyamin.message_manager;
 
-import ru.nsu.a.lyamin.PlayerInfo;
-
 import java.net.InetAddress;
 
 public class HostInfo

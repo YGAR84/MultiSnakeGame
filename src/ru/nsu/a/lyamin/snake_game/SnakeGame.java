@@ -1,6 +1,7 @@
 package ru.nsu.a.lyamin.snake_game;
 
 import ru.nsu.a.lyamin.message_decoder.SnakesProto;
+import ru.nsu.a.lyamin.message_manager.HostInfo;
 import ru.nsu.a.lyamin.message_manager.MessageManager;
 import ru.nsu.a.lyamin.view.GameWindow;
 
@@ -10,8 +11,6 @@ public class SnakeGame
 {
     private int height;
     private int width;
-
-    private long delay;
 
     private ArrayList<Point> food = new ArrayList<>();
     private HashMap<Integer, Snake> snakes = new HashMap<>();
@@ -30,9 +29,11 @@ public class SnakeGame
 
     private int gameStateCounter = 0;
 
-    private int playerIdCounter = 0;
+    private int playerIdCounter = 1;
 
-    private SnakesProto.GameState currGameState;
+    private List<Integer> deadSnakes = new ArrayList<>();
+
+
     private SnakesProto.GameConfig gameConfig;
 
     private MessageManager messageManager;
@@ -43,9 +44,15 @@ public class SnakeGame
 
     public SnakeGame(SnakesProto.GameConfig _gameConfig, GameWindow _gameWindow, SnakesProto.NodeRole _nodeRole)
     {
-        messageManager = new MessageManager(this, _gameConfig, _nodeRole);
+
         gameConfig = _gameConfig;
         gameWindow = _gameWindow;
+        messageManager = new MessageManager(this, _gameConfig, _nodeRole);
+
+        System.out.println("SNAKE GAME CTOR: " + (_gameWindow == null));
+
+
+
         nodeRole = _nodeRole;
         height = gameConfig.getHeight();
         width = gameConfig.getWidth();
@@ -70,7 +77,8 @@ public class SnakeGame
             if(_nodeRole == SnakesProto.NodeRole.VIEWER)
             {
 
-                playerIdCounter++;
+                while(players.containsKey(playerIdCounter) && snakes.containsKey(playerIdCounter))
+                    playerIdCounter++;
 
                 SnakesProto.GamePlayer newPlayer = SnakesProto.GamePlayer.newBuilder()
                         .setName(snakeName)
@@ -93,7 +101,8 @@ public class SnakeGame
             if(newSnakeBody.size() == 0) return -1;
 
 
-            playerIdCounter++;
+            while(players.containsKey(playerIdCounter) && snakes.containsKey(playerIdCounter))
+                playerIdCounter++;
 
             Snake newSnake = new Snake(newSnakeBody, height, width, playerIdCounter, SnakesProto.GameState.Snake.SnakeState.ALIVE);
 
@@ -136,6 +145,8 @@ public class SnakeGame
     private void increasePlayerScore(int pi)
     {
         SnakesProto.GamePlayer prevPlayer = players.get(pi);
+
+        if(prevPlayer == null) return;
 
         int newScore = prevPlayer.getScore() + 1;
 
@@ -202,26 +213,26 @@ public class SnakeGame
         {
             for(Map.Entry<Integer, Snake> entry : snakes.entrySet())
             {
-                System.out.println("PlayerID: " + entry.getKey());
-            }
-
-            for(Map.Entry<Integer, Snake> entry : snakes.entrySet())
-            {
                 moveSnake(entry.getKey(), entry.getValue(), movements.get(entry.getKey()));
             }
 
-            Iterator<Map.Entry<Integer, Snake>> itr = snakes.entrySet().iterator();
+            deadSnakes.clear();
 
-            while(itr.hasNext())
+            for (Map.Entry<Integer, Snake> entry : snakes.entrySet())
             {
-                Map.Entry<Integer, Snake> entry = itr.next();
-                if(checkCrash(entry.getKey(), entry.getValue()))
+                if (checkCrash(entry.getKey(), entry.getValue()))
                 {
-                    killPlayer(entry.getKey());
+                    deadSnakes.add(entry.getKey());
                 }
             }
 
+            for(int i : deadSnakes)
+            {
+                killPlayer(i);
+            }
+
             checkFood();
+
         }
     }
 
@@ -251,6 +262,20 @@ public class SnakeGame
         }
 
         generateFood(createFood);
+    }
+
+    public boolean isGameOver()
+    {
+        for(SnakesProto.GamePlayer gp : players.values())
+        {
+            if(gp.getRole() != SnakesProto.NodeRole.VIEWER) return false;
+        }
+        return true;
+    }
+
+    public boolean isDead(int playerId)
+    {
+        return !snakes.containsKey(playerId);
     }
 
     private void moveSnake(int pi, Snake snake, SnakesProto.Direction move)
@@ -393,47 +418,74 @@ public class SnakeGame
             freePlace[p.getX()][p.getY()] = false;
         }
 
-        for(int i = 0; i < width; ++i)
+        int halfOfSpawn = spawnArea / 2;
+
+        for(int i = halfOfSpawn; i < width - halfOfSpawn; ++i)
         {
-            int counter = 0;
-            for(int j = 0; j < height; ++j)
+            for(int j = halfOfSpawn; j < height - halfOfSpawn; ++j)
             {
-                if(freePlace[i][j])
+                boolean good = true;
+                for(int k = 0; k < spawnArea; ++k)
                 {
-                    counter++;
-
-                    if(counter == spawnArea)
+                    for(int l = 0; l < spawnArea; ++l)
                     {
-                        boolean flag = false;
-                        for (int k = j - counter + 1; k < height; ++k)
+                        if(!freePlace[k + i - halfOfSpawn][l + j - halfOfSpawn])
                         {
-                            int counter2 = 0;
-                            for(int l = i; l < width; ++l)
-                            {
-                                if(freePlace[l][k])
-                                {
-                                    ++counter2;
-                                    if(counter2 == spawnArea)
-                                    {
-                                        flag = true;
-                                    }
-                                }
-                                else
-                                    break;
-
-                            }
-                            if(flag) break;
+                            good = false;
+                            break;
                         }
-                        if(flag) return new Point(i, j - counter + 1);
-
                     }
+                    if(!good) break;
                 }
-                else
+                if(good)
                 {
-                    counter = 0;
+                    return new Point(i, j);
                 }
             }
         }
+
+//        for(int i = 0; i < width; ++i)
+//        {
+//            int counter = 0;
+//            for(int j = 0; j < height; ++j)
+//            {
+//                if(freePlace[i][j])
+//                {
+//                    if(counter < spawnArea)
+//                        counter++;
+//
+//                    if(counter == spawnArea)
+//                    {
+//                        boolean flag = false;
+//                        for (int k = j - counter + 1; k < height; ++k)
+//                        {
+//                            int counter2 = 0;
+//                            for(int l = i; l < width; ++l)
+//                            {
+//                                if(freePlace[l][k])
+//                                {
+//                                    ++counter2;
+//                                    if(counter2 == spawnArea)
+//                                    {
+//                                        flag = true;
+//                                    }
+//                                }
+//                                else
+//                                    break;
+//
+//                            }
+//                            if(flag) break;
+//                        }
+//                        if(flag) return new Point(i, j - counter + 1);
+//
+//                    }
+//                }
+//                else
+//                {
+//                    counter = 0;
+//                }
+//            }
+//        }
 
         return new Point(-1, -1);
     }
@@ -454,32 +506,30 @@ public class SnakeGame
     private ArrayList<Point> createNewSnakeBody()
     {
         Point p = findSpawnAreaRect();
+        System.out.println("X: " + p.getX() + "; Y: " + p.getY());
 
         if(p.getX() == -1)
         {
             return new ArrayList<>();
         }
 
-        Point head = new Point(p.getX() + spawnArea / 2 + 1, p.getY() + spawnArea/2 + 1);
-
         Point tailShift = getRandDir();
-        Point tail = new Point(head.getX() + tailShift.getX(), head.getY() + tailShift.getY());
+        Point tail = new Point(p.getX() + tailShift.getX(), p.getY() + tailShift.getY());
 
 
         ArrayList<Point> result = new ArrayList<>();
-        result.add(head);
+        result.add(p);
         result.add(tail);
 
         return result;
     }
 
-    // TODO: finish load State
-    public void loadState(SnakesProto.GameState newGameState)
+
+    public void loadState(SnakesProto.GameState newGameState, HostInfo sender)
     {
         synchronized (this)
         {
             gameStateCounter = newGameState.getStateOrder();
-
 
             food.clear();
             for(int i = 0; i < newGameState.getFoodsCount(); ++i)
@@ -504,6 +554,10 @@ public class SnakeGame
             {
                 SnakesProto.GamePlayer gamePlayer = gamePl.getPlayers(i);
 
+                if(gamePlayer.getIpAddress().equals(""))
+                {
+                    gamePlayer = gamePlayer.toBuilder().setIpAddress(sender.getIp().toString()).build();
+                }
                 players.put(gamePlayer.getId(), gamePlayer);
 
             }
@@ -511,6 +565,11 @@ public class SnakeGame
             gameStateCounter = newGameState.getStateOrder();
 
         }
+    }
+
+    public int getGameStateCounter()
+    {
+        return gameStateCounter;
     }
 
     public SnakesProto.GameState generateNewState()
@@ -572,6 +631,11 @@ public class SnakeGame
     public GameWindow getGameWindow()
     {
         return gameWindow;
+    }
+
+    public List<Integer> getDeadSnakes()
+    {
+        return deadSnakes;
     }
 }
 

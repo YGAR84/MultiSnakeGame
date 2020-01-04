@@ -38,7 +38,7 @@ public class GUIFx extends Application
     @Override
     public void start(Stage stage)
     {
-        stage.setTitle("Snake game");
+
 
         //new Discoverer();
 
@@ -49,6 +49,8 @@ public class GUIFx extends Application
 
         name = LoginWindow.getName();
 
+
+        stage.setTitle("Snake game\t    " + name);
 
         Thread t;
         try
@@ -75,7 +77,8 @@ public class GUIFx extends Application
             {
                 SnakesProto.GameConfig gameConfig = createGameConfig();
 
-                new GameWindow(gameConfig, this, discoverer, name, SnakesProto.NodeRole.MASTER);
+                GameWindow gameWindow = new GameWindow(gameConfig,
+                        discoverer, name, SnakesProto.NodeRole.MASTER);
             }
         });
 
@@ -85,13 +88,17 @@ public class GUIFx extends Application
             ObservableList<SessionInfo> sessionSelected;
             sessionSelected  = tableView.getSelectionModel().getSelectedItems();
 
+            if(sessionSelected.size() == 0)
+            {
+                return;
+            }
 
             SessionInfo si = sessionSelected.get(0);
 
             HostInfo hostInfo = new HostInfo(si.getIp(), si.getPort());
 
-            new GameWindow(si.getGameConfig(), this, discoverer, name, SnakesProto.NodeRole.NORMAL, hostInfo);
-
+            GameWindow gameWindow = new GameWindow(si.getGameConfig(),
+                    discoverer, name, SnakesProto.NodeRole.NORMAL, hostInfo);
 
 
             System.out.println(si.getIp() + " " + si.getPort());
@@ -127,6 +134,10 @@ public class GUIFx extends Application
     private TableView<SessionInfo> createTableViewColumns()
     {
         TableView<SessionInfo> tableView;
+
+        TableColumn<SessionInfo, String> nameColumn = new TableColumn<>("NAME");
+        nameColumn.setMaxWidth(250);
+        nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
 
         TableColumn<SessionInfo, InetAddress> ipColumn = new TableColumn<>("IP");
         ipColumn.setMaxWidth(250);
@@ -169,7 +180,7 @@ public class GUIFx extends Application
 
         tableView = new TableView<>();
         tableView.setItems(getSessionsInfo());
-        tableView.getColumns().addAll(ipColumn, portColumn, widthColumn, heightColumn, baseFoodColumn, foodMultiplyerColumn, foodDropChanceColumn, numOfPlayersColumn, canJoinColumn);
+        tableView.getColumns().addAll(ipColumn, portColumn, nameColumn, widthColumn, heightColumn, baseFoodColumn, foodMultiplyerColumn, foodDropChanceColumn, numOfPlayersColumn, canJoinColumn);
 
         return tableView;
     }
@@ -180,13 +191,21 @@ public class GUIFx extends Application
 
         for(Map.Entry<HostInfo, SnakesProto.GameMessage.AnnouncementMsg> entry : sessionInfoMap.entrySet())
         {
-            SnakesProto.GameConfig gameConfig = entry.getValue().getConfig();
-            sessionsInfo.add(new SessionInfo(
-                    entry.getKey().getIp(), entry.getKey().getPort(), gameConfig.getWidth(),
-                    gameConfig.getHeight(), gameConfig.getFoodStatic(), gameConfig.getFoodPerPlayer(),
-                    gameConfig.getDeadFoodProb(), entry.getValue().getPlayers().getPlayersCount(), entry.getValue().getCanJoin(),
-                    entry.getValue().getConfig())
-            );
+            for(SnakesProto.GamePlayer gamePlayer : entry.getValue().getPlayers().getPlayersList())
+            {
+                if(gamePlayer.getRole()== SnakesProto.NodeRole.MASTER)
+                {
+                    SnakesProto.GameConfig gameConfig = entry.getValue().getConfig();
+                    sessionsInfo.add(new SessionInfo(
+                            entry.getKey().getIp(), entry.getKey().getPort(), gamePlayer.getName(), gameConfig.getWidth(),
+                            gameConfig.getHeight(), gameConfig.getFoodStatic(), gameConfig.getFoodPerPlayer(),
+                            gameConfig.getDeadFoodProb(), entry.getValue().getPlayers().getPlayersCount(), entry.getValue().getCanJoin(),
+                            entry.getValue().getConfig())
+                    );
+                    break;
+                }
+            }
+
         }
 
         return sessionsInfo;
@@ -206,84 +225,4 @@ public class GUIFx extends Application
                 .build();
     }
 
-    public void startGame()
-    {
-        
-    }
 }
-
-
-//        HBox topMenu = new HBox();
-//        Button buttonA = new Button("Button A");
-//        Button buttonB = new Button("Button B");
-//        Button buttonC = new Button("Button C");
-//
-//        topMenu.getChildren().addAll(buttonA, buttonB, buttonC);
-//
-//
-//        VBox leftMenu = new VBox();
-//        Button buttonD = new Button("Button D");
-//        Button buttonE = new Button("Button E");
-//        Button buttonF = new Button("Button F");
-//
-//        leftMenu.getChildren().addAll(buttonD, buttonE, buttonF);
-//
-//        BorderPane borderPane = new BorderPane();
-//        borderPane.setTop(topMenu);
-//        borderPane.setLeft(leftMenu);
-//
-//        Scene scene = new Scene(borderPane, 300, 300);
-//        window.setScene(scene);
-
-
-//    button = new Button("click me");
-//        button.setOnAction(actionEvent -> closeProgramm());
-//
-//
-//        window.setOnCloseRequest(actionEvent ->
-//    {
-//        actionEvent.consume();
-//        closeProgramm();
-//    });
-//
-//
-//    StackPane layout = new StackPane();
-//        layout.getChildren().add(button);
-//    Scene scene = new Scene(layout, 300, 300);
-//        window.setScene(scene);
-//        window.show();
-//
-//}
-//
-//    private void closeProgramm()
-//    {
-//        boolean result = ConfirmBox.display("Clsoe", "Are you sure?");
-//        System.out.println(result);
-//        if(result)
-//            window.close();
-//    }
-//       window = stage;
-//
-//               Label label1 = new Label("First scene");
-//
-//               Button button1 = new Button("Go to scene 2");
-//               button1.setOnAction(actionEvent -> window.setScene(scene2));
-//
-//               VBox layout1 = new VBox(20);
-//
-//               layout1.getChildren().addAll(label1, button1);
-//               scene1 = new Scene(layout1, 300, 300);
-//
-//
-//               Button button2 = new Button("Go to scene 1");
-//               button2.setOnAction(actionEvent -> window.setScene(scene1));
-//
-//               StackPane layout2 = new StackPane();
-//               layout2.getChildren().add(button2);
-//               scene2 = new Scene(layout2, 200, 200);
-//
-//               window.setScene(scene1);
-//
-//               window.setTitle("LA");
-//               window.show();
-

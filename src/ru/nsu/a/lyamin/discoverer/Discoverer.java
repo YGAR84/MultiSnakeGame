@@ -1,13 +1,10 @@
 package ru.nsu.a.lyamin.discoverer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import ru.nsu.a.lyamin.PlayerInfo;
 import ru.nsu.a.lyamin.message_decoder.SnakesProto;
 import ru.nsu.a.lyamin.message_manager.HostInfo;
 import ru.nsu.a.lyamin.message_manager.MessageManager;
-import ru.nsu.a.lyamin.snake_game.Snake;
 import ru.nsu.a.lyamin.snake_game.SnakeGame;
-//import ru.nsu.a.lyamin.view.SessionInfo;
 
 import java.io.IOException;
 import java.net.*;
@@ -16,6 +13,8 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
+
+//import ru.nsu.a.lyamin.view.SessionInfo;
 
 public class Discoverer implements Runnable
 {
@@ -84,7 +83,8 @@ public class Discoverer implements Runnable
         }
 
         socket.close();
-        timer.cancel();
+        if(timer != null)
+            timer.cancel();
     }
 
     private void checkMap()
@@ -160,36 +160,57 @@ public class Discoverer implements Runnable
 
     public void sendAnnouncementMsg(SnakeGame _snakeGame, SnakesProto.GameConfig _gameConfig)
     {
-        snakeGame = _snakeGame;
-        gameConfig = _gameConfig;
 
-        hasToSend = true;
-
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run()
+        synchronized (this)
+        {
+            if(timer != null)
             {
-                //System.out.println("Has to send:" + hasToSend);
-                if(!hasToSend) return;
-                //System.out.println("Message:"  + getMessage());
-                SnakesProto.GameMessage message = getMessage();
-                byte [] messageByte = message.toByteArray();
-                try
-                {
-                    socket.send(new DatagramPacket(messageByte, messageByte.length, groupIp, groupPort));
-                }
-                catch (IOException e)
-                {
-                    e.printStackTrace();
-                }
-
+                timer.cancel();
+                timer = null;
             }
-        }, 0, 1000);
+
+            timer = new Timer();
+
+            snakeGame = _snakeGame;
+            gameConfig = _gameConfig;
+
+            hasToSend = true;
+
+            timer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run()
+                {
+                    //System.out.println("Has to send:" + hasToSend);
+                    if(!hasToSend) return;
+                    //System.out.println("Message:"  + getMessage());
+                    SnakesProto.GameMessage message = getMessage();
+                    byte [] messageByte = message.toByteArray();
+                    try
+                    {
+                        socket.send(new DatagramPacket(messageByte, messageByte.length, groupIp, groupPort));
+                    }
+                    catch (IOException e)
+                    {
+                        e.printStackTrace();
+                    }
+
+                }
+            }, 0, 1000);
+
+        }
     }
 
     public void stopSendAnnouncementMsg()
     {
-        hasToSend = false;
-        timer.cancel();
+        synchronized (this)
+        {
+            if(timer != null)
+            {
+                hasToSend = false;
+                timer.cancel();
+                timer = null;
+            }
+
+        }
     }
 }

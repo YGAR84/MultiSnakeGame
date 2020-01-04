@@ -28,7 +28,7 @@ import java.util.*;
 
 public class GameWindow
 {
-    private GUIFx guiFx;
+    private Stage window;
 
     private final SnakeGame snakeGame;
 
@@ -43,15 +43,24 @@ public class GameWindow
     private final int windowWidth = 1000;
     private final int windowHeight = 700;
 
+    private Color backGroundColor = Color.rgb(0,0,0);
+    private Color foodColor = Color.rgb(255,255,0);
+    private Color enemyBodyColor = Color.rgb(255, 0,0);
+    private Color enemyHeadColor = Color.rgb(255,95, 168);
+    private Color myBodyColor = Color.rgb(46,84,204);
+    private Color myHeadColor = Color.rgb(24,151,204);
+
+    private Timer timer = new Timer();
+    private MessageManager messageManager;
+
     private SnakesProto.NodeRole nodeRole;
     private Discoverer discoverer;
 
     private double cellWidth = 30;
 
 
-    public GameWindow(SnakesProto.GameConfig _gameConfig, GUIFx _guiFx, Discoverer _discoverer, String name, SnakesProto.NodeRole _nodeRole, HostInfo hi)
+    public GameWindow(SnakesProto.GameConfig _gameConfig, Discoverer _discoverer, String name, SnakesProto.NodeRole _nodeRole, HostInfo hi)
     {
-        guiFx = _guiFx;
         discoverer = _discoverer;
         nodeRole = _nodeRole;
 
@@ -59,16 +68,15 @@ public class GameWindow
 
         snakeGame = new SnakeGame(gameConfig, this, nodeRole);
 
-        MessageManager messageManager = snakeGame.getMessageManager();
+        messageManager = snakeGame.getMessageManager();
 
         messageManager.sendJoin(hi, name);
 
-        createWindow();
+        createWindow(name);
     }
 
-    public GameWindow(SnakesProto.GameConfig _gameConfig, GUIFx _guiFx, Discoverer _discoverer, String name, SnakesProto.NodeRole _nodeRole)
+    public GameWindow(SnakesProto.GameConfig _gameConfig, Discoverer _discoverer, String name, SnakesProto.NodeRole _nodeRole)
     {
-        guiFx = _guiFx;
         discoverer = _discoverer;
         nodeRole = _nodeRole;
 
@@ -76,8 +84,7 @@ public class GameWindow
 
         snakeGame = new SnakeGame(gameConfig, this, nodeRole);
 
-        MessageManager messageManager = snakeGame.getMessageManager();
-
+        messageManager = snakeGame.getMessageManager();
 
         if((pi = messageManager.addMe(name, SnakesProto.NodeRole.MASTER,
                 SnakesProto.PlayerType.HUMAN)) == -1)
@@ -88,14 +95,12 @@ public class GameWindow
 
         discoverer.sendAnnouncementMsg(snakeGame, gameConfig);
 
-        createWindow();
+        createWindow(name);
 
     }
 
-    private void createWindow()
+    private void createWindow(String name)
     {
-
-        MessageManager messageManager = snakeGame.getMessageManager();
 
         cellWidth = (double)(windowWidth - scoresWidth)/snakeGame.getWidth();
         if(cellWidth > (double)windowHeight/snakeGame.getHeight())
@@ -106,14 +111,26 @@ public class GameWindow
         Canvas c = new Canvas(snakeGame.getWidth() * cellWidth, snakeGame.getHeight() * cellWidth);
         context = c.getGraphicsContext2D();
 
-        Stage window = new Stage();
+        window = new Stage();
+
+        window.setTitle(name);
 
         VBox vbox = new VBox();
         Button becameViewer = new Button("Became Viewer");
         becameViewer.setFocusTraversable(false);
+        becameViewer.setOnAction(actionEvent ->
+        {
+//            System.out.println("Became VIEWER");
+            messageManager.becameViewer();
+        });
 
         Button exitButton = new Button("Exit");
         exitButton.setFocusTraversable(false);
+        exitButton.setOnAction(actionEvent ->
+        {
+  //          System.out.println("Safe EXIT PRESSED");
+            messageManager.safeExit();
+        });
 
         draw();
         createScores();
@@ -129,43 +146,52 @@ public class GameWindow
         {
             if (keyEvent.getCode() == KeyCode.LEFT)
             {
-                if(nodeRole != SnakesProto.NodeRole.MASTER)
+                if(nodeRole == SnakesProto.NodeRole.MASTER)
+                {
+                    snakeGame.changeSnakeDir(pi, SnakesProto.Direction.LEFT);
+                }
+                else if(nodeRole != SnakesProto.NodeRole.VIEWER)
                 {
                     messageManager.sendSteer(pi, SnakesProto.Direction.LEFT);
                 }
-                snakeGame.changeSnakeDir(pi, SnakesProto.Direction.LEFT);
             }
             else if (keyEvent.getCode() == KeyCode.RIGHT)
             {
-                if(nodeRole != SnakesProto.NodeRole.MASTER)
+                if(nodeRole == SnakesProto.NodeRole.MASTER)
+                {
+                    snakeGame.changeSnakeDir(pi, SnakesProto.Direction.RIGHT);
+                }
+                else if(nodeRole != SnakesProto.NodeRole.VIEWER)
                 {
                     messageManager.sendSteer(pi, SnakesProto.Direction.RIGHT);
                 }
-
-                snakeGame.changeSnakeDir(pi, SnakesProto.Direction.RIGHT);
             }
             else if (keyEvent.getCode() == KeyCode.UP)
             {
-                if(nodeRole != SnakesProto.NodeRole.MASTER)
+                if(nodeRole == SnakesProto.NodeRole.MASTER)
+                {
+                    snakeGame.changeSnakeDir(pi, SnakesProto.Direction.UP);
+                }
+                else if(nodeRole != SnakesProto.NodeRole.VIEWER)
                 {
                     messageManager.sendSteer(pi, SnakesProto.Direction.UP);
                 }
-
-                snakeGame.changeSnakeDir(pi, SnakesProto.Direction.UP);
             }
             else if (keyEvent.getCode() == KeyCode.DOWN)
             {
-                if(nodeRole != SnakesProto.NodeRole.MASTER)
+                if(nodeRole == SnakesProto.NodeRole.MASTER)
+                {
+                    snakeGame.changeSnakeDir(pi, SnakesProto.Direction.DOWN);
+                }
+                else if(nodeRole != SnakesProto.NodeRole.VIEWER)
                 {
                     messageManager.sendSteer(pi, SnakesProto.Direction.DOWN);
                 }
-
-                snakeGame.changeSnakeDir(pi, SnakesProto.Direction.DOWN);
             }
         });
 
 
-        Timer timer = new Timer();
+        timer = new Timer();
         timer.scheduleAtFixedRate(
         new TimerTask() {
             @Override
@@ -175,13 +201,13 @@ public class GameWindow
                 {
                     synchronized (snakeGame)
                     {
-                        snakeGame.moveSnakes();
-                        draw();
-                        updateScores();
-
                         if(nodeRole == SnakesProto.NodeRole.MASTER)
                         {
+                        //    System.out.println("I became master LOL: " + pi);
+                            snakeGame.moveSnakes();
                             messageManager.sendState();
+
+                            repaint();
                         }
                     }
                 });
@@ -190,26 +216,35 @@ public class GameWindow
         0,
         gameConfig.getStateDelayMs());
 
-        window.setOnCloseRequest(windowEvent ->
-        {
-            timer.cancel();
-            discoverer.stopSendAnnouncementMsg();
-            messageManager.disableMessageManager();
-        });
+        window.setOnCloseRequest(windowEvent -> terminate());
 
 
         window.setScene(scene);
         window.show();
     }
 
+
     public void repaint()
     {
         synchronized (snakeGame)
         {
-            snakeGame.moveSnakes();
             draw();
             updateScores();
+            if(snakeGame.isGameOver())
+            {
+                terminate();
+                Platform.runLater(() -> GameOverWindow.display(scores));
+               // System.out.println("Game over, pls stop timer");
+            }
         }
+    }
+
+    public void terminate()
+    {
+        messageManager.disableMessageManager();
+        timer.cancel();
+        discoverer.stopSendAnnouncementMsg();
+        Platform.runLater(()-> window.close());
     }
 
 
@@ -217,30 +252,39 @@ public class GameWindow
     {
         HashMap<Integer, Snake> snakes  = snakeGame.getSnakes();
 
-        context.setFill(Color.BLACK);
+        context.setFill(backGroundColor);
         context.fillRect(0, 0, cellWidth * snakeGame.getWidth(), cellWidth * snakeGame.getHeight());
 
 
         for(Map.Entry<Integer, Snake> entry : snakes.entrySet())
         {
+            Color bodyColor = enemyBodyColor;
+            Color headColor = enemyHeadColor;
+            if(entry.getKey() == pi)
+            {
+                bodyColor = myBodyColor;
+                headColor = myHeadColor;
+            }
 
             ArrayList<Point> snakeBody = entry.getValue().getSnakeBody();
             for(int i = 0; i < snakeBody.size(); ++i)
             {
+
                 int x = snakeBody.get(i).getX();
                 int y = snakeBody.get(i).getY();
+
                 if(i == 0)
                 {
-                    context.setFill(Color.GREEN);
+                    context.setFill(headColor);
                     context.fillRect(cellWidth * x, cellWidth * y, cellWidth , cellWidth);
                     continue;
                 }
-                context.setFill(Color.RED);
+                context.setFill(bodyColor);
                 context.fillRect(cellWidth * x, cellWidth * y, cellWidth , cellWidth);
             }
         }
 
-        context.setFill(Color.YELLOW);
+        context.setFill(foodColor);
         for(Point p : snakeGame.getFood())
         {
             context.fillRect(cellWidth * p.getX(), cellWidth * p.getY(), cellWidth , cellWidth);
@@ -250,9 +294,9 @@ public class GameWindow
 
     private  void createScores()
     {
-        TableColumn<Score, String> nameCloumn = new TableColumn<>("Name");
-        nameCloumn.setCellValueFactory(new PropertyValueFactory<>("name"));
-        nameCloumn.setMinWidth(100);
+        TableColumn<Score, String> nameColumn = new TableColumn<>("Name");
+        nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
+        nameColumn.setMinWidth(100);
 
         TableColumn<Score, Integer> scoreColumn = new TableColumn<>("Score");
         scoreColumn.setCellValueFactory(new PropertyValueFactory<>("score"));
@@ -261,7 +305,7 @@ public class GameWindow
 
 
         scores = new TableView<>();
-        scores.getColumns().addAll(nameCloumn, scoreColumn);
+        scores.getColumns().addAll(nameColumn, scoreColumn);
         scores.setMaxWidth(windowWidth - snakeGame.getWidth() * cellWidth);
         scores.setMinWidth(windowWidth - snakeGame.getWidth() * cellWidth);
         scores.setEditable(false);
@@ -271,7 +315,6 @@ public class GameWindow
 
     private  void updateScores()
     {
-//        HashMap<Integer, Snake> snakes  = snakeGame.getSnakes();
         ObservableList<Score> scoresNew = FXCollections.observableArrayList();
         for(Map.Entry<Integer, SnakesProto.GamePlayer> entry : snakeGame.getPlayers().entrySet())
         {
@@ -287,11 +330,21 @@ public class GameWindow
         this.pi = pi;
     }
 
-    //    private  ObservableList<Score> getScores()
-//    {
-//        ObservableList<Score> scores = FXCollections.observableArrayList();
-//
-//        return scores;
-//    }
 
+    public void setNodeRole(SnakesProto.NodeRole _nodeRole)
+    {
+        if(nodeRole == _nodeRole) return;
+
+        nodeRole = _nodeRole;
+
+        if(nodeRole == SnakesProto.NodeRole.MASTER)
+        {
+            discoverer.stopSendAnnouncementMsg();
+            discoverer.sendAnnouncementMsg(snakeGame, gameConfig);
+        }
+        else
+        {
+            discoverer.stopSendAnnouncementMsg();
+        }
+    }
 }

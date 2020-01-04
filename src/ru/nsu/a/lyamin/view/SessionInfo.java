@@ -9,6 +9,8 @@ public class SessionInfo
     private InetAddress ip;
     private int port;
 
+    private String name;
+
     private int width;
     private int height;
     private int baseFood;
@@ -19,13 +21,15 @@ public class SessionInfo
 
     private SnakesProto.GameConfig gameConfig;
 
-    public SessionInfo(InetAddress _ip, int _port,
+    public SessionInfo(InetAddress _ip, int _port, String _name,
                 int _width, int _height,
                 int _baseFood, double _foodMultilpyer, double _foodDropChance,
                 int _numOfPlayers, boolean _canJoin, SnakesProto.GameConfig _gameConfig)
     {
+
         ip = _ip;
         port = _port;
+        name = _name;
         width = _width;
         height = _height;
         baseFood = _baseFood;
@@ -135,5 +139,15 @@ public class SessionInfo
     public void setGameConfig(SnakesProto.GameConfig gameConfig)
     {
         this.gameConfig = gameConfig;
+    }
+
+    public String getName()
+    {
+        return name;
+    }
+
+    public void setName(String name)
+    {
+        this.name = name;
     }
 }

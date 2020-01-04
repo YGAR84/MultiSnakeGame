@@ -30,11 +30,6 @@ public class Snake
         prevMovement = _snakeMessage.getHeadDirection();
 
         playerId = _snakeMessage.getPlayerId();
-
-
-
-
-
     }
 
     public Snake(ArrayList<Point> _snakeBody, int _fieldLength, int _fieldWidth, int _playerId,
@@ -199,30 +194,137 @@ public class Snake
 
         Point lastPoint = getHead();
 
-        for (int i = 1; i < snakeBody.size() - 1; ++i)
+        Point buffer = new Point();
+
+        for (int i = 1; i < snakeBody.size(); ++i)
         {
             Point p1 = snakeBody.get(i - 1);
+
+            Point currPoint = snakeBody.get(i);
+
+            int newXShift = currPoint.getX() - p1.getX();
+            int newYShift = currPoint.getY() - p1.getY();
+
+            if (newYShift > 0)
+            {
+                if (newYShift > 1)
+                {
+                    newYShift = -1;
+                }
+            } else
+            {
+                if (newYShift < -1)
+                {
+                    newYShift = 1;
+                }
+            }
+
+            if (newXShift > 0)
+            {
+                if (newXShift > 1)
+                {
+                    newXShift = -1;
+                }
+            } else
+            {
+                if (newXShift < -1)
+                {
+                    newXShift = 1;
+                }
+            }
+
+            buffer.setY(newYShift + buffer.getY());
+            buffer.setX(newXShift + buffer.getX());
+
+            if (i == snakeBody.size() - 1)
+            {
+                snakeBuilder.addPoints(SnakesProto.GameState.Coord.newBuilder()
+                        .setX(buffer.getX())
+                        .setY(buffer.getY())
+                );
+                break;
+            }
+
             Point p2 = snakeBody.get(i + 1);
 
             int xShift = p1.getX() - p2.getX();
+            int yShift = p1.getY() - p2.getY();
 
-            if (Math.abs(xShift) == 1)
+
+            if (Math.abs(xShift) != 0 && Math.abs(yShift) != 0)
             {
-                snakeBuilder.addPoints(SnakesProto.GameState.Coord.newBuilder()
-                        .setX(snakeBody.get(i).getX() - lastPoint.getX())
-                        .setY(snakeBody.get(i).getY() - lastPoint.getY())
-                );
-                lastPoint = snakeBody.get(i);
-            }
-        }
 
-        snakeBuilder.addPoints(SnakesProto.GameState.Coord.newBuilder()
-                .setX(snakeBody.get(snakeBody.size() - 1).getX() - lastPoint.getX())
-                .setY(snakeBody.get(snakeBody.size() - 1).getY() - lastPoint.getY())
-        );
+                snakeBuilder.addPoints(SnakesProto.GameState.Coord.newBuilder()
+                        .setX(buffer.getX())
+                        .setY(buffer.getY())
+                );
+
+                buffer = new Point();
+            }
+
+        }
 
 
         return snakeBuilder.build();
+    }
+
+    public ArrayList<Point> decodeBodyFromMessage(SnakesProto.GameState.Snake _snakeMess)
+    {
+        ArrayList<Point> result = new ArrayList<>();
+
+        SnakesProto.GameState.Coord head = _snakeMess.getPointsList().get(0);
+
+        result.add(new Point(head.getX(), head.getY()));
+
+        for(int i = 1; i < _snakeMess.getPointsCount(); ++i)
+        {
+            Point prevPoint = result.get(result.size() - 1);
+            SnakesProto.GameState.Coord shift = _snakeMess.getPoints(i);
+
+            int yCoef = 0;
+            int xCoef = 0;
+
+            int numOfPoints = 0;
+
+            if(shift.getX() == 0)
+            {
+                if(shift.getY() == 0)
+                {
+                    System.out.println("SOME DECODING SNAKE ERROR: shift point with coord (0, 0)");
+                }
+                else if(shift.getY() > 0)
+                {
+                    numOfPoints = shift.getY();
+                    yCoef = 1;
+                }
+                else
+                {
+                    numOfPoints = -shift.getY();
+                    yCoef = -1;
+                }
+            }
+            else if(shift.getX() > 0)
+            {
+                numOfPoints = shift.getX();
+                xCoef = 1;
+            }
+            else
+            {
+                numOfPoints = -shift.getX();
+                xCoef = -1;
+            }
+
+            for(int j = 0; j < numOfPoints; ++j)
+            {
+                Point newPoint = getNormalizePoint(prevPoint.getX() + (j + 1) * xCoef,
+                        prevPoint.getY() + (j + 1) * yCoef);
+
+                result.add(newPoint);
+            }
+
+        }
+
+        return result;
     }
 
     public void loadSnake(SnakesProto.GameState.Snake _snakeMessage)
@@ -245,7 +347,7 @@ public class Snake
     {
         SnakesProto.GameState.Coord head = _snakeMessage.getPointsList().get(0);
 
-        snakeBody.add(0, new Point(head.getX(), head.getY()));
+        snakeBody.add(new Point(head.getX(), head.getY()));
 
         for(int i = 1; i < _snakeMessage.getPointsCount(); ++i)
         {
@@ -287,14 +389,22 @@ public class Snake
 
             for(int j = 0; j < numOfPoints; ++j)
             {
-                snakeBody.add(new Point(prevPoint.getX() + (j + 1) * xCoef,
-                        prevPoint.getY() + (j + 1) * yCoef));
+                Point newPoint = getNormalizePoint(prevPoint.getX() + (j + 1) * xCoef,
+                        prevPoint.getY() + (j + 1) * yCoef);
+
+                snakeBody.add(newPoint);
             }
 
         }
 
-        normalizeSnake();
+    }
 
+    private Point getNormalizePoint(int x, int y)
+    {
+        while (y <= 0) y += fieldHeight;
+        while (x <= 0) x += fieldWidth;
+
+        return new Point(x % fieldWidth, y % fieldHeight);
     }
 
 }
